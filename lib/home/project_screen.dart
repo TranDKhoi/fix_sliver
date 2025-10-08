@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:fix_sliver/home/widgets/project_tab_bar.dart';
 import 'package:fix_sliver/home/widgets/tab_project_detail.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'widgets/project_appbar.dart';
 import 'widgets/project_info.dart';
 import 'widgets/tab_project_unit_list.dart';
