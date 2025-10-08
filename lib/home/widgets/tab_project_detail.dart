@@ -6,18 +6,20 @@ class TabProjectDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.white,
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            ...List.generate(
-              40,
-              (index) => const Text("this is some very long text"),
+    return SliverList.list(
+      children: [
+        ...List.generate(
+          30,
+          (index) => Container(
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(8),
             ),
-          ],
+            child: Center(child: Text('Detail info  #$index')),
+          ),
         ),
-      ),
+      ],
     );
   }
 }

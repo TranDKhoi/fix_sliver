@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:math';
+import 'package:fix_sliver/home/widgets/project_tab_bar.dart';
 import 'package:fix_sliver/home/widgets/tab_project_detail.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'widgets/project_appbar.dart';
 import 'widgets/project_info.dart';
 import 'widgets/tab_project_unit_list.dart';
@@ -23,7 +26,9 @@ class _ProjectScreenState extends State<ProjectScreen>
 
   double _pinnedAppbarOpacity = 0.0;
   bool _showAppBarTitle = false;
-  bool _headerOverlapped = false;
+  bool _filterBarPinned = false;
+  bool _tabBarPinned = false;
+  double? _distanceFromTopScreenToUnitList;
 
   @override
   void initState() {
@@ -31,6 +36,7 @@ class _ProjectScreenState extends State<ProjectScreen>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
     _scrollController.addListener(_onScroll);
+    _calculateDistanceFromTopScreenToUnitListOnce();
   }
 
   void _onScroll() {
@@ -55,29 +61,62 @@ class _ProjectScreenState extends State<ProjectScreen>
     }
   }
 
-  // to show hide the View unit Button
+  // show hide the View unit Button
+  // show hide filter bar, unit count
   void _onTabChanged() {
     setState(() {});
   }
 
   Future<void> _handleChangeTab() async {
     _tabController.animateTo(0);
-    _onScroll();
 
-    final context = _projectUnitListKey.currentContext;
-    if (context != null) {
-      Scrollable.ensureVisible(context).then((_) {});
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _projectUnitListKey.currentContext;
+      if (context != null) {
+        final renderObj = context.findRenderObject();
+        if (renderObj is RenderBox) {
+          _scrollController.animateTo(
+            _distanceFromTopScreenToUnitList!,
+            duration: const Duration(milliseconds: 100),
+            curve: Curves.linear,
+          );
+        }
+      }
+    });
   }
 
-  void _onHeaderOverlap(bool value) {
-    if (_headerOverlapped != value) {
+  void _onTabBarPinned(bool value) {
+    if (_tabBarPinned != value) {
       WidgetsBinding.instance.addPostFrameCallback(
         (timeStamp) {
-          setState(() => _headerOverlapped = value);
+          setState(() => _tabBarPinned = value);
         },
       );
     }
+  }
+
+  void _onFilterBarPinned(bool value) {
+    if (_filterBarPinned != value) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (timeStamp) {
+          setState(() => _filterBarPinned = value);
+        },
+      );
+    }
+  }
+
+  // will only calculate 1 time when init screen
+  void _calculateDistanceFromTopScreenToUnitListOnce() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _projectUnitListKey.currentContext;
+      if (context != null) {
+        final renderObj = context.findRenderObject();
+        if (renderObj is RenderBox) {
+          _distanceFromTopScreenToUnitList ??=
+              renderObj.localToGlobal(Offset.zero).dy;
+        }
+      }
+    });
   }
 
   @override
@@ -101,96 +140,79 @@ class _ProjectScreenState extends State<ProjectScreen>
               ),
             )
           : null,
-      body: NestedScrollView(
+      body: CustomScrollView(
         controller: _scrollController,
-        headerSliverBuilder: (_, __) => [
+        slivers: [
+          /// background image and app bar
           ProjectAppBar(
             opacity: _pinnedAppbarOpacity,
             showTitle: _showAppBarTitle,
-            showShadow: !_headerOverlapped,
+            showShadow: !_tabBarPinned,
           ),
+
+          /// info section here
           SliverToBoxAdapter(
             child: ProjectInfo(
               projectTitleKey: _projectTitleKey,
             ),
           ),
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _SliverTabBarDelegate(
-              tabBar: TabBar(
-                controller: _tabController,
-                labelColor: Colors.black,
-                unselectedLabelColor: Colors.grey,
-                indicatorColor: Colors.black,
-                tabs: const [
-                  Tab(text: 'Units'),
-                  Tab(text: 'Details'),
-                ],
+
+          /// Tab bar
+          ProjectTabBar(
+            tabController: _tabController,
+            isFilterBarPinned:
+                _tabController.index == 1 ? false : _filterBarPinned,
+            onOverlapChanged: _onTabBarPinned,
+          ),
+
+          /// work as a anchor so i can scroll to it
+          SliverToBoxAdapter(
+            child: SizedBox(
+              key: _projectUnitListKey,
+            ),
+          ),
+
+          /// filter bar and unit count
+          if (_tabController.index == 0) ...[
+            const SliverToBoxAdapter(
+              child: ColoredBox(
+                color: Colors.white,
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    "Total 18 units",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
               ),
-              filterBar: ProjectFilterBar(onFilterPressed: () {}),
-              showFilter: _tabController.index == 0,
-              onOverlapChanged: _onHeaderOverlap,
+            ),
+            ProjectFilterBar(
+              onOverlapChanged: _onFilterBarPinned,
+            ),
+          ],
+
+          /// Tab Bar View Content here
+          DecoratedSliver(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+            ),
+            sliver: Builder(
+              builder: (context) {
+                switch (_tabController.index) {
+                  case 0:
+                    return const TabProjectUnitList();
+                  default:
+                    return const TabProjectDetail();
+                }
+              },
             ),
           ),
         ],
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            TabProjectUnitList(projectUnitListKey: _projectUnitListKey),
-            const TabProjectDetail(),
-          ],
-        ),
       ),
     );
   }
-}
-
-class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
-  final Widget tabBar;
-  final Widget filterBar;
-  final bool showFilter;
-  final Function(bool) onOverlapChanged;
-  bool _lastOverlaps = false;
-
-  _SliverTabBarDelegate({
-    required this.tabBar,
-    required this.filterBar,
-    required this.showFilter,
-    required this.onOverlapChanged,
-  });
-
-  @override
-  double get minExtent => kTextTabBarHeight + (showFilter ? 64 : 0);
-
-  @override
-  double get maxExtent => minExtent;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    if (_lastOverlaps != overlapsContent) {
-      _lastOverlaps = overlapsContent;
-      onOverlapChanged.call(overlapsContent);
-    }
-
-    return Material(
-      color: Colors.white,
-      elevation: overlapsContent ? 4 : 0,
-      shadowColor: Colors.black,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          tabBar,
-          showFilter ? filterBar : const SizedBox.shrink(),
-        ],
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _SliverTabBarDelegate oldDelegate) =>
-      oldDelegate.showFilter != showFilter;
 }
