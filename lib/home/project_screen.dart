@@ -32,12 +32,12 @@ class _ProjectScreenState extends State<ProjectScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_onTabChanged);
-    _scrollController.addListener(_onScroll);
+    _tabController.addListener(_onTabChangedListener);
+    _scrollController.addListener(_onScrollListener);
     _calculateDistanceFromTopScreenToUnitListOnce();
   }
 
-  void _onScroll() {
+  void _onScrollListener() {
     /// this method is use to calculate when to show the pinned appbar
     final titleContext = _projectTitleKey.currentContext;
     if (titleContext != null) {
@@ -61,7 +61,7 @@ class _ProjectScreenState extends State<ProjectScreen>
 
   // show hide the View unit Button
   // show hide filter bar, unit count
-  void _onTabChanged() {
+  void _onTabChangedListener() {
     setState(() {});
   }
 
@@ -119,7 +119,9 @@ class _ProjectScreenState extends State<ProjectScreen>
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChangedListener);
     _tabController.dispose();
+    _scrollController.removeListener(_onScrollListener);
     _scrollController.dispose();
     super.dispose();
   }
