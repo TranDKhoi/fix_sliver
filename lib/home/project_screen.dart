@@ -26,7 +26,6 @@ class _ProjectScreenState extends State<ProjectScreen>
   bool _showAppBarTitle = false;
   bool _filterBarPinned = false;
   bool _tabBarPinned = false;
-  double? _distanceFromTopScreenToUnitList;
 
   @override
   void initState() {
@@ -34,7 +33,6 @@ class _ProjectScreenState extends State<ProjectScreen>
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChangedListener);
     _scrollController.addListener(_onScrollListener);
-    _calculateDistanceFromTopScreenToUnitListOnce();
   }
 
   void _onScrollListener() {
@@ -65,22 +63,17 @@ class _ProjectScreenState extends State<ProjectScreen>
     setState(() {});
   }
 
-  Future<void> _handleChangeTab() async {
+Future<void> _handleChangeTab() async {
     _tabController.animateTo(0);
+    final context = _projectUnitListKey.currentContext;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _projectUnitListKey.currentContext;
-      if (context != null) {
-        final renderObj = context.findRenderObject();
-        if (renderObj is RenderBox) {
-          _scrollController.animateTo(
-            _distanceFromTopScreenToUnitList!,
-            duration: const Duration(milliseconds: 100),
-            curve: Curves.linear,
-          );
-        }
-      }
-    });
+    if (context == null) return;
+
+    Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 100),
+      curve: Curves.linear,
+    );
   }
 
   void _onTabBarPinned(bool value) {
@@ -101,20 +94,6 @@ class _ProjectScreenState extends State<ProjectScreen>
         },
       );
     }
-  }
-
-  // will only calculate 1 time when init screen
-  void _calculateDistanceFromTopScreenToUnitListOnce() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _projectUnitListKey.currentContext;
-      if (context != null) {
-        final renderObj = context.findRenderObject();
-        if (renderObj is RenderBox) {
-          _distanceFromTopScreenToUnitList ??=
-              renderObj.localToGlobal(Offset.zero).dy;
-        }
-      }
-    });
   }
 
   @override
