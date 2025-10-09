@@ -63,15 +63,17 @@ class _ProjectScreenState extends State<ProjectScreen>
     setState(() {});
   }
 
-  Future<void> _handleChangeTab() async {
+Future<void> _handleChangeTab() async {
     _tabController.animateTo(0);
-    if (_projectUnitListKey.currentContext != null) {
-      Scrollable.ensureVisible(
-        _projectUnitListKey.currentContext!,
-        duration: const Duration(milliseconds: 100),
-        curve: Curves.linear,
-      );
-    }
+    final context = _projectUnitListKey.currentContext;
+
+    if (context == null) return;
+
+    Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 100),
+      curve: Curves.linear,
+    );
   }
 
   void _onTabBarPinned(bool value) {
